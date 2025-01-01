@@ -26,9 +26,7 @@ jobs:
         id: dockerfiles
         run: |
           dockerfiles=$(find . -name 'Dockerfile' -exec dirname {} \; | sed 's/^\.\///')
-          echo "components<<EOF" >> $GITHUB_OUTPUT
-          echo "$dockerfiles" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "components=$dockerfiles" >> $GITHUB_OUTPUT
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -41,16 +39,16 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ item }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ component }}
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v4
         with:
-          context: ./${{ item }}
+          context: ./${{ component }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
         strategy:
           matrix:
-            item: ${{ steps.dockerfiles.outputs.components.splitLines() }}
+            component: ${{ steps.dockerfiles.outputs.components.split(' ') }}
