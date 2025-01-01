@@ -11,31 +11,11 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      components: ${{ steps.set-components.outputs.components }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Get list of Dockerfiles
-        id: set-components
-        run: |
-          dockerfiles=$(find . -name 'Dockerfile' -exec dirname {} \; | sed 's/^\.\///' | jq -R -s 'split("\n") | map(select(length > 0))')
-          echo "components=$dockerfiles" >> $GITHUB_ENV
-          echo "components=$dockerfiles" >> $GITHUB_OUTPUT
-
   build-and-push:
-    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
-    strategy:
-      matrix:
-        component: ${{ fromJson(needs.prepare.outputs.components) }}
 
     steps:
       - name: Checkout repository
@@ -50,14 +30,14 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/postgres-backup-s3
 
-      - name: Build and push Docker images
-        uses: docker/build-push-action@v4
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
         with:
-          context: ./${{ matrix.component }}
+          context: ./postgres-backup-s3
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
