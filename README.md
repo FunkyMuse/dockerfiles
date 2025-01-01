@@ -5,6 +5,7 @@ Collection of lightweight and ready-to-use docker images based on the work done 
 
 * **[postgres-backup-s3](/postgres-backup-s3)** - Backup PostgresSQL to S3 (supports periodic backups)
 * **[postgres-restore-s3](/postgres-restore-s3)** - Restore PostgresSQL from S3
+* **[caddy-rate-limit](/caddy-rate-limit)** - Caddy with rate limit
 
 ## FAQ
 
