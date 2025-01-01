@@ -6,25 +6,13 @@ RUN apk add --no-cache \
     build-base
 
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
-    export PATH="/root/go/bin:${PATH}"
-
-RUN /root/go/bin/xcaddy build \
+    /root/go/bin/xcaddy build \
     --with github.com/mholt/caddy-ratelimit
 
 FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates
 
-COPY --from=builder /root/go/bin/caddy /usr/bin/caddy
-
-RUN addgroup -S caddy && \
-    adduser -S caddy -G caddy
-
-RUN mkdir /config && \
-    chown -R caddy:caddy /config
-
-USER caddy
-
-EXPOSE 80 443
+COPY --from=builder /caddy /usr/bin/caddy
 
 CMD ["caddy", "run"]
