@@ -39,7 +39,7 @@ jobs:
 
     strategy:
       matrix:
-        component: ${{ fromJson(needs.build-and-push.outputs.components) }}
+        component: ${{ fromJson('["' + join('","', env.components) + '"]') }}
 
     steps:
       - name: Checkout repository
