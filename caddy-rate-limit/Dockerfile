@@ -5,9 +5,10 @@ RUN apk add --no-cache \
     git \
     build-base
 
-RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && \
+    export PATH="/root/go/bin:${PATH}"
 
-RUN xcaddy build \
+RUN /root/go/bin/xcaddy build \
     --with github.com/mholt/caddy-ratelimit
 
 FROM alpine:3.21
