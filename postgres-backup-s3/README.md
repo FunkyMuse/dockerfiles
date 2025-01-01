@@ -44,6 +44,12 @@ You can additionally set the `SCHEDULE` environment variable like `-e SCHEDULE="
 
 More information about the scheduling can be found [here](http://godoc.org/github.com/robfig/cron#hdr-Predefined_schedules).
 
+### Delete Old Backups
+
+You can additionally set the `DELETE_OLDER_THAN` environment variable like `-e DELETE_OLDER_THAN="30 days ago"` to delete old backups.
+
+WARNING: this will delete all files in the S3_PREFIX path, not just those created by this script.
+
 ### Backup File Name / Path
 By default, if `POSTGRES_BACKUP_ALL` is true, the dump file will be put at `<S3_PREFIX=''>/all_<timestamp>.sql.gz`. When using `POSTGRES_DATABASE`, each database listed will be backed up to the object path `<S3_PREFIX=''>/<database>_<timestamp>.sql.gz`.
 

@@ -19,6 +19,7 @@ ENV S3_ENDPOINT **None**
 ENV S3_S3V4 no
 ENV SCHEDULE **None**
 ENV ENCRYPTION_PASSWORD **None**
+ENV DELETE_OLDER_THAN **None**
 
 ADD run.sh run.sh
 ADD backup.sh backup.sh
