@@ -11,27 +11,23 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  prepare:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
+    outputs:
+      components: ${{ steps.set-components.outputs.components }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Get list of Dockerfiles
-        id: dockerfiles
+        id: set-components
         run: |
           dockerfiles=$(find . -name 'Dockerfile' -exec dirname {} \; | sed 's/^\.\///' | jq -R -s 'split("\n") | map(select(length > 0))')
           echo "components=$dockerfiles" >> $GITHUB_ENV
+          echo "components=$dockerfiles" >> $GITHUB_OUTPUT
 
-    outputs:
-      components: ${{ env.components }}
-
-  build-matrix:
-    needs: build-and-push
+  build-and-push:
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,7 +35,7 @@ jobs:
 
     strategy:
       matrix:
-        component: ${{ fromJson('["' + join('","', env.components) + '"]') }}
+        component: ${{ fromJson(needs.prepare.outputs.components) }}
 
     steps:
       - name: Checkout repository
