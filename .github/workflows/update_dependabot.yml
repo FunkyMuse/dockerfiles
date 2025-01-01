@@ -36,37 +36,6 @@ jobs:
           DIRS=$(find . -type f -name "Dockerfile" -exec dirname {} \; | sed 's/.\///' | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=${DIRS}" >> $GITHUB_OUTPUT
 
-      - name: Update Dependabot Configuration
-        run: |
-          mkdir -p .github/
-          echo "version: 2" > .github/dependabot.yml
-          echo "updates:" >> .github/dependabot.yml
-          
-          find . -type f -name "Dockerfile" -exec dirname {} \; | while read -r dir; do
-            dir=${dir#./}
-            cat >> .github/dependabot.yml << EOF
-              - package-ecosystem: "docker"
-                directory: "/$dir"
-                schedule:
-                  interval: "daily"
-                labels:
-                  - "docker"
-                  - "dependencies"
-                versioning-strategy: auto
-                open-pull-requests-limit: 10
-
-            EOF
-          done
-
-      - name: Create Pull Request for Dependabot Config
-        uses: peter-evans/create-pull-request@v6
-        with:
-          commit-message: 'chore: update dependabot configuration'
-          title: 'chore: update dependabot configuration'
-          body: 'Updated dependabot.yml based on Dockerfile locations'
-          branch: 'chore/update-dependabot-config'
-          delete-branch: true
-
   build-and-push:
     needs: prepare
     runs-on: ubuntu-latest
