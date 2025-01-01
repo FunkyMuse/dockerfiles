@@ -11,7 +11,6 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
@@ -26,7 +25,7 @@ jobs:
         id: dockerfiles
         run: |
           dockerfiles=$(find . -name 'Dockerfile' -exec dirname {} \; | sed 's/^\.\///')
-          echo "components=$dockerfiles" >> $GITHUB_OUTPUT
+          echo "components=$(echo \"$dockerfiles\" | jq -R -s 'split("\n") | map(select(length > 0))')" >> $GITHUB_ENV
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -35,20 +34,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ component }}
-
       - name: Build and push Docker images
         uses: docker/build-push-action@v4
+        for: ${{ fromJson(env.components) }}
         with:
-          context: ./${{ component }}
+          context: ./${{ item }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-        strategy:
-          matrix:
-            component: ${{ steps.dockerfiles.outputs.components.split(' ') }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ item }}:latest
