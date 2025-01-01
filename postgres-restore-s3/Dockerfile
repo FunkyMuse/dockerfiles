@@ -1,4 +1,4 @@
-FROM alpine:3.15
+FROM alpine:3.21
 
 ADD install.sh install.sh
 RUN sh install.sh && rm install.sh

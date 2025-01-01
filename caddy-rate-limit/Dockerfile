@@ -1,8 +1,29 @@
-FROM caddy:builder AS builder
+FROM alpine:3.21 AS builder
+
+RUN apk add --no-cache \
+    go \
+    git \
+    build-base
+
+RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
 RUN xcaddy build \
     --with github.com/mholt/caddy-ratelimit
 
-FROM caddy:latest
+FROM alpine:3.21
 
-COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /root/go/bin/caddy /usr/bin/caddy
+
+RUN addgroup -S caddy && \
+    adduser -S caddy -G caddy
+
+RUN mkdir /config && \
+    chown -R caddy:caddy /config
+
+USER caddy
+
+EXPOSE 80 443
+
+CMD ["caddy", "run"]
