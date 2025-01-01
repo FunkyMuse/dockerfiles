@@ -11,11 +11,29 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find directories with Dockerfile
+        id: set-matrix
+        run: |
+          DIRS=$(find . -type f -name "Dockerfile" -exec dirname {} \; | sed 's/.\///' | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=${DIRS}" >> $GITHUB_OUTPUT
+
   build-and-push:
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        dockerfile_dir: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     steps:
       - name: Checkout repository
@@ -32,12 +50,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/postgres-backup-s3
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.dockerfile_dir }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./postgres-backup-s3
+          context: ./${{ matrix.dockerfile_dir }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

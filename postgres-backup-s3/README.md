@@ -66,6 +66,3 @@ You can specify an alternate endpoint by setting `S3_ENDPOINT` environment varia
 ### Encryption
 
 You can additionally set the `ENCRYPTION_PASSWORD` environment variable like `-e ENCRYPTION_PASSWORD="superstrongpassword"` to encrypt the backup. It can be decrypted using `openssl aes-256-cbc -d -in backup.sql.gz.enc -out backup.sql.gz`.
-
-### Source
-Based on the work done by [schickling](https://github.com/schickling/dockerfiles)
