@@ -1,11 +1,19 @@
 name: Build and Publish Docker Images
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - '**/*.md'
     tags: [ "v*.*.*" ]
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - '**/*.md'
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sundays
 
