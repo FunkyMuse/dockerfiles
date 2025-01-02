@@ -86,7 +86,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile_dir }}
 
   cleanup:
-    needs: [ build-and-push ]
+    needs: [ prepare, build-and-push ]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     permissions:
