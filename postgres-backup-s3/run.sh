@@ -11,12 +11,13 @@ chmod +x /backup.sh
 if [ "${SCHEDULE}" = "**None**" ]; then
   sh backup.sh
 else
-  # Create crontab with proper format and permissions
-  echo "SHELL=/bin/sh
-${SCHEDULE} backup.sh" > /etc/crontabs/root
+  # Create crontab with proper format
+  {
+    echo "SHELL=/bin/sh"
+    echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    echo "${SCHEDULE} /backup.sh"
+  } > /etc/crontabs/root
 
-  # Ensure proper permissions on crontab
   chmod 0644 /etc/crontabs/root
-
   exec go-crond /etc/crontabs/root
 fi
