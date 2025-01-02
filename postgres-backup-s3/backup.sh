@@ -89,25 +89,6 @@ if [ "${POSTGRES_BACKUP_ALL}" == "true" ]; then
 
   echo "SQL backup uploaded successfully"
   rm -rf $SRC_FILE
-
-  if [ "${DELETE_OLDER_THAN}" != "**None**" ]; then
-    echo "Deleting backups older than ${DELETE_OLDER_THAN}..."
-    aws $AWS_ARGS s3 ls s3://$S3_BUCKET/$S3_PREFIX/ | grep " PRE " -v | while read -r line;
-      do
-        created=`echo $line|awk {'print $1" "$2'}`
-        created=`date -d "$created" +%s`
-        older_than=`date -d "$DELETE_OLDER_THAN" +%s`
-        if [ $created -lt $older_than ]
-          then
-            fileName=`echo $line|awk {'print $4'}`
-            if [ $fileName != "" ] && [[ $fileName =~ .*_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\.sql\.gz$ ]]
-              then
-                printf 'Deleting backup "%s"\n' $fileName
-                aws $AWS_ARGS s3 rm s3://$S3_BUCKET/$S3_PREFIX/$fileName
-            fi
-        fi
-      done;
-  fi
 else
   OIFS="$IFS"
   IFS=','
@@ -142,23 +123,4 @@ else
     echo "SQL backup uploaded successfully"
     rm -rf $SRC_FILE
   done
-
-  if [ "${DELETE_OLDER_THAN}" != "**None**" ]; then
-    echo "Deleting backups older than ${DELETE_OLDER_THAN}..."
-    aws $AWS_ARGS s3 ls s3://$S3_BUCKET/$S3_PREFIX/ | grep " PRE " -v | while read -r line;
-      do
-        created=`echo $line|awk {'print $1" "$2'}`
-        created=`date -d "$created" +%s`
-        older_than=`date -d "$DELETE_OLDER_THAN" +%s`
-        if [ $created -lt $older_than ]
-          then
-            fileName=`echo $line|awk {'print $4'}`
-            if [ $fileName != "" ] && [[ $fileName =~ .*_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\.sql\.gz$ ]]
-              then
-                printf 'Deleting backup "%s"\n' $fileName
-                aws $AWS_ARGS s3 rm s3://$S3_BUCKET/$S3_PREFIX/$fileName
-            fi
-        fi
-      done;
-  fi
 fi
