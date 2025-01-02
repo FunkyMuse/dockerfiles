@@ -99,19 +99,17 @@ jobs:
       - name: Delete old container versions
         uses: actions/delete-package-versions@v4
         with:
-          package-name: ${{ matrix.dockerfile_dir }}
+          package-name: dockerfiles/${{ matrix.dockerfile_dir }}
           package-type: 'container'
           min-versions-to-keep: ${{ env.KEEP_VERSIONS }}
           delete-only-untagged-versions: true
-          registry: 'container'
           owner: ${{ github.repository_owner }}
 
       - name: Delete old tagged versions
         uses: actions/delete-package-versions@v4
         with:
-          package-name: ${{ matrix.dockerfile_dir }}
+          package-name: dockerfiles/${{ matrix.dockerfile_dir }}
           package-type: 'container'
           min-versions-to-keep: ${{ env.KEEP_VERSIONS }}
           delete-only-untagged-versions: false
-          registry: 'container'
           owner: ${{ github.repository_owner }}
