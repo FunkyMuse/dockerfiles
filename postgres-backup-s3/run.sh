@@ -7,21 +7,53 @@ log() {
 }
 
 check_aws_credentials() {
+    log "Checking AWS credentials configuration..."
+
+    if [ -z "$S3_ACCESS_KEY_ID" ]; then
+        log "ERROR: S3_ACCESS_KEY_ID is not set"
+        return 1
+    fi
+
+    if [ -z "$S3_SECRET_ACCESS_KEY" ]; then
+        log "ERROR: S3_SECRET_ACCESS_KEY is not set"
+        return 1
+    }
+
     log "Access Key ID: ${S3_ACCESS_KEY_ID:0:4}..."
-    log "Secret Key ID: ${S3_SECRET_ACCESS_KEY:0:4}..."
-    log "Secret Access Key exists: $([ ! -z "$S3_SECRET_ACCESS_KEY" ] && echo 'yes' || echo 'no')"
+    log "Secret Key exists: $([ ! -z "$S3_SECRET_ACCESS_KEY" ] && echo 'yes' || echo 'no')"
 
-    if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_SECRET_ACCESS_KEY" ]; then
-        export AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
-        export AWS_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY
+    export AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
+    export AWS_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY
 
-        aws sts get-caller-identity 2>&1 || log "AWS Error: $?"
+    log "Testing AWS credentials..."
+    if ! aws_response=$(aws sts get-caller-identity 2>&1); then
+        log "ERROR: AWS credentials validation failed"
+        log "Error details: $aws_response"
+
+        case "$aws_response" in
+            *InvalidClientTokenId*)
+                log "DIAGNOSIS: The AWS Access Key ID is invalid or does not exist"
+                log "SOLUTION: Verify your AWS Access Key ID and ensure the IAM user/role exists"
+                ;;
+            *SignatureDoesNotMatch*)
+                log "DIAGNOSIS: The AWS Secret Access Key is incorrect"
+                log "SOLUTION: Verify your AWS Secret Access Key"
+                ;;
+            *ExpiredToken*)
+                log "DIAGNOSIS: The security token has expired"
+                log "SOLUTION: Refresh your AWS credentials"
+                ;;
+            *)
+                log "DIAGNOSIS: Unknown AWS authentication error"
+                log "SOLUTION: Check AWS credentials and permissions"
+                ;;
+        esac
+        return 1
     fi
 
-    if ! aws sts get-caller-identity >/dev/null 2>&1; then
-        log "ERROR: S3 credentials not found or invalid"
-        exit 1
-    fi
+    log "AWS credentials validated successfully"
+    log "Identity: $aws_response"
+    return 0
 }
 
 print_config() {
