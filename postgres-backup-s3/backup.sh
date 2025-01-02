@@ -75,9 +75,9 @@ if [ "${DELETE_OLDER_THAN}" != "**None**" ]; then
       if [ $created -lt $older_than ]
         then
           fileName=`echo $line|awk {'print $4'}`
-          if [ $fileName != "" ]
+          if [ $fileName != "" ] && [[ $fileName =~ .*_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\.sql\.gz$ ]]
             then
-              printf 'Deleting "%s"\n' $fileName
+              printf 'Deleting backup "%s"\n' $fileName
               aws $AWS_ARGS s3 rm s3://$S3_BUCKET/$S3_PREFIX/$fileName
           fi
       fi
