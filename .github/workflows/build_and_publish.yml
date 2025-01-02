@@ -84,18 +84,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.dockerfile_dir }}
           cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile_dir }}
-
-  cleanup:
-    needs: [build-and-push]
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    permissions:
-      packages: write
-    steps:
-      - name: Delete old images
-        uses: actions/delete-package-versions@v4
-        with:
-          package-name: ${{ env.IMAGE_NAME }}
-          package-type: 'container'
-          min-versions-to-keep: ${{ env.KEEP_VERSIONS }}
-          delete-only-untagged-versions: false
