@@ -7,9 +7,15 @@ log() {
 }
 
 check_aws_credentials() {
+    log "Access Key ID: ${S3_ACCESS_KEY_ID:0:4}..."
+    log "Secret Key ID: ${S3_SECRET_ACCESS_KEY:0:4}..."
+    log "Secret Access Key exists: $([ ! -z "$S3_SECRET_ACCESS_KEY" ] && echo 'yes' || echo 'no')"
+
     if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_SECRET_ACCESS_KEY" ]; then
         export AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
         export AWS_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY
+
+        aws sts get-caller-identity 2>&1 || log "AWS Error: $?"
     fi
 
     if ! aws sts get-caller-identity >/dev/null 2>&1; then
