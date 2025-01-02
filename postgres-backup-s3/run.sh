@@ -17,7 +17,7 @@ check_aws_credentials() {
     if [ -z "$S3_SECRET_ACCESS_KEY" ]; then
         log "ERROR: S3_SECRET_ACCESS_KEY is not set"
         return 1
-    }
+    fi
 
     log "Access Key ID: ${S3_ACCESS_KEY_ID:0:4}..."
     log "Secret Key exists: $([ ! -z "$S3_SECRET_ACCESS_KEY" ] && echo 'yes' || echo 'no')"
