@@ -6,33 +6,6 @@ log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
 }
 
-validate_env_vars() {
-    local required_vars="POSTGRES_HOST POSTGRES_PORT POSTGRES_DATABASE S3_BUCKET S3_REGION"
-    local missing_vars=0
-
-    log "Validating Docker environment variables..."
-    for var in $required_vars; do
-        eval "value=\$$var"
-        if [ -z "$value" ]; then
-            log "ERROR: Required Docker environment variable $var is not set"
-            log "Make sure to pass it using: docker run -e $var=value ..."
-            missing_vars=1
-        fi
-    done
-
-    if [ $missing_vars -eq 1 ]; then
-        log "Please provide all required environment variables when running the container:"
-        log "docker run \\"
-        log "  -e POSTGRES_HOST=your_host \\"
-        log "  -e POSTGRES_PORT=5432 \\"
-        log "  -e POSTGRES_DATABASE=your_database \\"
-        log "  -e S3_BUCKET=your_bucket \\"
-        log "  -e S3_REGION=your_region \\"
-        log "  ..."
-        exit 1
-    fi
-}
-
 check_aws_credentials() {
     if [ -n "$S3_ACCESS_KEY_ID" ] && [ -n "$S3_SECRET_ACCESS_KEY" ]; then
         export AWS_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
@@ -41,11 +14,6 @@ check_aws_credentials() {
 
     if ! aws sts get-caller-identity >/dev/null 2>&1; then
         log "ERROR: S3 credentials not found or invalid"
-        log "Please provide S3 credentials when running the container:"
-        log "docker run \\"
-        log "  -e S3_ACCESS_KEY_ID=your_key \\"
-        log "  -e S3_SECRET_ACCESS_KEY=your_secret \\"
-        log "  ..."
         exit 1
     fi
 }
@@ -94,7 +62,6 @@ cleanup_old_backups() {
                 created_date=$(echo "$line" | awk '{print $1" "$2}')
                 printf 'File: %s\nSize: %s\nCreated: %s\n\n' "$file_name" "$file_size" "$created_date"
                 found_files=1
-
             fi
         fi
     done < <(aws $AWS_ARGS s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" | grep -v " PRE ")
@@ -111,7 +78,6 @@ configure_s3() {
 }
 
 main() {
-    validate_env_vars
     check_aws_credentials
     print_config
     configure_s3
