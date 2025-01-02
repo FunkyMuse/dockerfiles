@@ -96,7 +96,7 @@ jobs:
         dockerfile_dir: ${{ fromJson(needs.prepare.outputs.matrix) }}
       fail-fast: false
     steps:
-      - name: Delete old container versions
+      - name: Delete old untagged versions
         uses: actions/delete-package-versions@v4
         with:
           package-name: dockerfiles/${{ matrix.dockerfile_dir }}
@@ -104,8 +104,9 @@ jobs:
           min-versions-to-keep: ${{ env.KEEP_VERSIONS }}
           delete-only-untagged-versions: true
           owner: ${{ github.repository_owner }}
+          ignore-versions: latest
 
-      - name: Delete old tagged versions
+      - name: Delete old tagged versions except latest
         uses: actions/delete-package-versions@v4
         with:
           package-name: dockerfiles/${{ matrix.dockerfile_dir }}
@@ -113,3 +114,4 @@ jobs:
           min-versions-to-keep: ${{ env.KEEP_VERSIONS }}
           delete-only-untagged-versions: false
           owner: ${{ github.repository_owner }}
+          ignore-versions: latest
