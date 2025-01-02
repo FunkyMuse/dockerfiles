@@ -7,17 +7,12 @@ log() {
 }
 
 validate_env_vars() {
-    local required_vars=(
-        "POSTGRES_HOST"
-        "POSTGRES_PORT"
-        "POSTGRES_DATABASE"
-        "S3_BUCKET"
-        "S3_REGION"
-    )
+    local required_vars
+    required_vars="POSTGRES_HOST POSTGRES_PORT POSTGRES_DATABASE S3_BUCKET S3_REGION"
     local missing_vars=0
 
     log "Validating Docker environment variables..."
-    for var in "${required_vars[@]}"; do
+    for var in $required_vars; do
         if [ -z "${!var}" ]; then
             log "ERROR: Required Docker environment variable $var is not set"
             log "Make sure to pass it using: docker run -e $var=value ..."
@@ -102,7 +97,7 @@ cleanup_old_backups() {
 
             fi
         fi
-    done < <(aws "${AWS_ARGS[@]}" s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" | grep -v " PRE ")
+    done < <(aws $AWS_ARGS s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" | grep -v " PRE ")
 
     if [ "$found_files" -eq 0 ]; then
         log "No files found matching age criteria"
