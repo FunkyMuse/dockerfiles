@@ -1,7 +1,6 @@
 #! /bin/sh
 
-set -e
-set -o pipefail
+set -eo pipefail
 
 if [ "${S3_ACCESS_KEY_ID}" = "**None**" ]; then
   echo "You need to set the S3_ACCESS_KEY_ID environment variable."
@@ -18,7 +17,7 @@ if [ "${S3_BUCKET}" = "**None**" ]; then
   exit 1
 fi
 
-if [ "${POSTGRES_DATABASE}" = "**None**" ]; then
+if [ "${POSTGRES_DATABASE}" = "**None**" -a "${POSTGRES_BACKUP_ALL}" != "true" ]; then
   echo "You need to set the POSTGRES_DATABASE environment variable."
   exit 1
 fi
@@ -57,31 +56,109 @@ export AWS_DEFAULT_REGION=$S3_REGION
 export PGPASSWORD=$POSTGRES_PASSWORD
 POSTGRES_HOST_OPTS="-h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER $POSTGRES_EXTRA_OPTS"
 
-echo "Creating dump of ${POSTGRES_DATABASE} database from ${POSTGRES_HOST}..."
-
-pg_dump $POSTGRES_HOST_OPTS $POSTGRES_DATABASE | gzip > dump.sql.gz
-
-echo "Uploading dump to $S3_BUCKET"
-
-cat dump.sql.gz | aws $AWS_ARGS s3 cp - s3://$S3_BUCKET/$S3_PREFIX/${POSTGRES_DATABASE}_$(date +"%Y-%m-%dT%H:%M:%SZ").sql.gz || exit 2
-
-if [ "${DELETE_OLDER_THAN}" != "**None**" ]; then
-  echo "Deleting backups older than ${DELETE_OLDER_THAN}..."
-  aws $AWS_ARGS s3 ls s3://$S3_BUCKET/$S3_PREFIX/ | grep " PRE " -v | while read -r line;
-    do
-      created=`echo $line|awk {'print $1" "$2'}`
-      created=`date -d "$created" +%s`
-      older_than=`date -d "$DELETE_OLDER_THAN" +%s`
-      if [ $created -lt $older_than ]
-        then
-          fileName=`echo $line|awk {'print $4'}`
-          if [ $fileName != "" ] && [[ $fileName =~ .*_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\.sql\.gz$ ]]
-            then
-              printf 'Deleting backup "%s"\n' $fileName
-              aws $AWS_ARGS s3 rm s3://$S3_BUCKET/$S3_PREFIX/$fileName
-          fi
-      fi
-    done;
+if [ -z ${S3_PREFIX+x} ]; then
+  S3_PREFIX="/"
+else
+  S3_PREFIX="/${S3_PREFIX}/"
 fi
 
-echo "SQL backup uploaded successfully"
+if [ "${POSTGRES_BACKUP_ALL}" == "true" ]; then
+  SRC_FILE=dump.sql.gz
+  DEST_FILE=all_$(date +"%Y-%m-%dT%H:%M:%SZ").sql.gz
+
+  if [ "${S3_FILE_NAME}" != "**None**" ]; then
+    DEST_FILE=${S3_FILE_NAME}.sql.gz
+  fi
+
+  echo "Creating dump of all databases from ${POSTGRES_HOST}..."
+  pg_dumpall -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER | gzip > $SRC_FILE
+
+  if [ "${ENCRYPTION_PASSWORD}" != "**None**" ]; then
+    echo "Encrypting ${SRC_FILE}"
+    openssl enc -aes-256-cbc -in $SRC_FILE -out ${SRC_FILE}.enc -k $ENCRYPTION_PASSWORD
+    if [ $? != 0 ]; then
+      >&2 echo "Error encrypting ${SRC_FILE}"
+    fi
+    rm $SRC_FILE
+    SRC_FILE="${SRC_FILE}.enc"
+    DEST_FILE="${DEST_FILE}.enc"
+  fi
+
+  echo "Uploading dump to $S3_BUCKET"
+  cat $SRC_FILE | aws $AWS_ARGS s3 cp - "s3://${S3_BUCKET}${S3_PREFIX}${DEST_FILE}" || exit 2
+
+  echo "SQL backup uploaded successfully"
+  rm -rf $SRC_FILE
+
+  if [ "${DELETE_OLDER_THAN}" != "**None**" ]; then
+    echo "Deleting backups older than ${DELETE_OLDER_THAN}..."
+    aws $AWS_ARGS s3 ls s3://$S3_BUCKET/$S3_PREFIX/ | grep " PRE " -v | while read -r line;
+      do
+        created=`echo $line|awk {'print $1" "$2'}`
+        created=`date -d "$created" +%s`
+        older_than=`date -d "$DELETE_OLDER_THAN" +%s`
+        if [ $created -lt $older_than ]
+          then
+            fileName=`echo $line|awk {'print $4'}`
+            if [ $fileName != "" ] && [[ $fileName =~ .*_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\.sql\.gz$ ]]
+              then
+                printf 'Deleting backup "%s"\n' $fileName
+                aws $AWS_ARGS s3 rm s3://$S3_BUCKET/$S3_PREFIX/$fileName
+            fi
+        fi
+      done;
+  fi
+else
+  OIFS="$IFS"
+  IFS=','
+  for DB in $POSTGRES_DATABASE
+  do
+    IFS="$OIFS"
+
+    SRC_FILE=dump.sql.gz
+    DEST_FILE=${DB}_$(date +"%Y-%m-%dT%H:%M:%SZ").sql.gz
+
+    if [ "${S3_FILE_NAME}" != "**None**" ]; then
+      DEST_FILE=${S3_FILE_NAME}_${DB}.sql.gz
+    fi
+
+    echo "Creating dump of ${DB} database from ${POSTGRES_HOST}..."
+    pg_dump $POSTGRES_HOST_OPTS $DB | gzip > $SRC_FILE
+
+    if [ "${ENCRYPTION_PASSWORD}" != "**None**" ]; then
+      echo "Encrypting ${SRC_FILE}"
+      openssl enc -aes-256-cbc -in $SRC_FILE -out ${SRC_FILE}.enc -k $ENCRYPTION_PASSWORD
+      if [ $? != 0 ]; then
+        >&2 echo "Error encrypting ${SRC_FILE}"
+      fi
+      rm $SRC_FILE
+      SRC_FILE="${SRC_FILE}.enc"
+      DEST_FILE="${DEST_FILE}.enc"
+    fi
+
+    echo "Uploading dump to $S3_BUCKET"
+    cat $SRC_FILE | aws $AWS_ARGS s3 cp - "s3://${S3_BUCKET}${S3_PREFIX}${DEST_FILE}" || exit 2
+
+    echo "SQL backup uploaded successfully"
+    rm -rf $SRC_FILE
+  done
+
+  if [ "${DELETE_OLDER_THAN}" != "**None**" ]; then
+    echo "Deleting backups older than ${DELETE_OLDER_THAN}..."
+    aws $AWS_ARGS s3 ls s3://$S3_BUCKET/$S3_PREFIX/ | grep " PRE " -v | while read -r line;
+      do
+        created=`echo $line|awk {'print $1" "$2'}`
+        created=`date -d "$created" +%s`
+        older_than=`date -d "$DELETE_OLDER_THAN" +%s`
+        if [ $created -lt $older_than ]
+          then
+            fileName=`echo $line|awk {'print $4'}`
+            if [ $fileName != "" ] && [[ $fileName =~ .*_[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\.sql\.gz$ ]]
+              then
+                printf 'Deleting backup "%s"\n' $fileName
+                aws $AWS_ARGS s3 rm s3://$S3_BUCKET/$S3_PREFIX/$fileName
+            fi
+        fi
+      done;
+  fi
+fi
