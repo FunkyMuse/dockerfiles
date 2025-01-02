@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /bin/sh
 
 set -eo pipefail
 
@@ -7,13 +7,13 @@ log() {
 }
 
 validate_env_vars() {
-    local required_vars
-    required_vars="POSTGRES_HOST POSTGRES_PORT POSTGRES_DATABASE S3_BUCKET S3_REGION"
+    local required_vars="POSTGRES_HOST POSTGRES_PORT POSTGRES_DATABASE S3_BUCKET S3_REGION"
     local missing_vars=0
 
     log "Validating Docker environment variables..."
     for var in $required_vars; do
-        if [ -z "${!var}" ]; then
+        eval "value=\$$var"
+        if [ -z "$value" ]; then
             log "ERROR: Required Docker environment variable $var is not set"
             log "Make sure to pass it using: docker run -e $var=value ..."
             missing_vars=1
